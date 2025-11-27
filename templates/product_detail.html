@@ -1,0 +1,27 @@
+
+{% extends "base.html" %}
+{% block title %}{{ product.name }} - Resona Cat Shop{% endblock %}
+{% block content %}
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <img src="{{ product.image_url }}" class="img-fluid rounded shadow-sm" alt="{{ product.name }}">
+    </div>
+    <div class="col-md-6">
+      <h1 class="h3">{{ product.name }}</h1>
+      <p class="text-muted mb-1">{{ product.brand }}</p>
+      <p class="fw-bold fs-5 mb-3">{{ "{:,}".format(product.price) }}원</p>
+      <p>{{ product.description }}</p>
+      <div class="d-flex gap-2 mt-3">
+        <form action="{{ url_for('toggle_cart', pid=product.id) }}" method="post">
+          {% if product_in_cart(product.id) %}
+            <button type="submit" class="btn btn-warning">카트에서 제거</button>
+          {% else %}
+            <button type="submit" class="btn btn-primary">카트에 담기</button>
+          {% endif %}
+        </form>
+        <a href="{{ url_for('cart') }}" class="btn btn-outline-secondary">장바구니 보기</a>
+        <a href="{{ url_for('index') }}" class="btn btn-link">← 메인으로</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

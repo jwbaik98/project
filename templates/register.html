@@ -1,0 +1,25 @@
+
+{% extends "base.html" %}
+{% block title %}Sign Up - Resona Cat Shop{% endblock %}
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+      <h1 class="h4 mb-3">집사 회원가입</h1>
+      <form method="post" novalidate>
+        <div class="mb-3">
+          <label for="username" class="form-label">Username</label>
+          <input id="username" name="username" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input id="password" type="password" name="password" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label for="confirm" class="form-label">Confirm Password</label>
+          <input id="confirm" type="password" name="confirm" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100">Sign Up</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

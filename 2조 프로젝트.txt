@@ -1,0 +1,15 @@
+[2조] 프로젝트 과제
+○ 선택한 프로젝트 : catshop
+
+○ github : https://github.com/jwbaik98/project
+
+○ 프로젝트진행방향
+   - 각 조원별 테스트 파일 제작후 github를 이용하여 종합
+    이후 PPT 제작예정
+
+○ 분할파트
+  1. 박서아  login, product_detail
+  2. 안재원 cart, checkout
+  3. 오예린 index, register
+  4. 백종우(리더) base
+
