@@ -210,3 +210,16 @@ def logout():
 
 if __name__=="__main__":
     app.run(debug=True)
+
+def get_product(pid):
+    """주어진 ID로 상품 정보를 찾아 반환합니다."""
+    # pid가 문자열로 넘어올 수 있으므로 int로 변환 시도
+    try:
+        pid = int(pid)
+    except ValueError:
+        return None
+
+    for product in PRODUCTS:
+        if product['id'] == pid:
+            return product
+    return None
