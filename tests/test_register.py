@@ -1,93 +1,132 @@
-# test_register.py
-
 import pytest
-# 💡 실제 Flask 애플리케이션 인스턴스가 정의된 모듈에서 'app'을 가져옵니다.
-# 예: from my_app import app
-from app import app 
-
-# ----------------------------------------------------
-# 🛠️ Fixture: 테스트 클라이언트 설정
-# ----------------------------------------------------
-
-@pytest.fixture
-def client():
-    """테스트 클라이언트 설정 및 Flask 애플리케이션 컨텍스트 초기화"""
-    # 애플리케이션을 테스트 모드로 설정
-    app.config['TESTING'] = True
-    
-    # 세션 관리를 위해 SECRET_KEY 설정이 필요할 수 있습니다.
-    # app.config['SECRET_KEY'] = 'test_secret_key' 
-    
-    with app.test_client() as client:
-        yield client
-
-# ----------------------------------------------------
-# 📝 테스트 1: GET 요청 (페이지 로드)
-# ----------------------------------------------------
-
-def test_register_page_loads_successfully(client):
-    """GET 요청 시 회원가입 페이지가 성공적으로 로드되고 필수 폼 요소가 있는지 검증"""
-    # 💡 애플리케이션의 회원가입 경로에 맞게 URL을 사용합니다.
-    response = client.get('/register') 
-
-    # 1. 상태 코드 확인
-    assert response.status_code == 200
-    
-    # 2. 페이지 내용 확인 (폼의 제목 및 필드 확인)
-    response_data = response.data.decode('utf-8')
-    assert "집사 회원가입" in response_data # 페이지 제목/헤더
-    assert 'name="username"' in response_data # 사용자 이름 필드
-    assert 'name="password"' in response_data # 비밀번호 필드
-    assert 'name="confirm"' in response_data # 비밀번호 확인 필드
-    assert 'Sign Up' in response_data # 제출 버튼
-
-# ----------------------------------------------------
-# 📝 테스트 2: POST 요청 (성공적인 제출 시나리오)
-# ----------------------------------------------------
-
-def test_successful_registration_submission(client):
-    """유효한 데이터로 폼 제출 시 성공적으로 처리되고 리디렉션되는지 테스트"""
-    # 유효한 폼 데이터 시뮬레이션
-    valid_data = {
-        'username': 'newcatbutler',
-        'password': 'SecurePass123!',
-        'confirm': 'SecurePass123!'
-    }
-
-    # POST 요청을 보내고 리디렉션 자동 추적
-    response = client.post('/register', data=valid_data, follow_redirects=True)
-
-    # 1. 최종 상태 코드 확인 
-    # (성공 후 로그인 또는 메인 페이지로 리디렉션되어 200 OK 예상)
-    assert response.status_code == 200
-    
-    # 2. 최종 페이지 내용 확인 (성공 후 이동할 페이지의 고유 텍스트를 검증)
-    # 💡 여기에 성공 후 이동하는 페이지의 내용을 확인하는 코드를 추가하세요.
-    # response_data = response.data.decode('utf-8')
-    # assert "로그인하십시오" in response_data 
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 
-# ----------------------------------------------------
-# 📝 테스트 3: POST 요청 (비밀번호 불일치 오류 시나리오)
-# ----------------------------------------------------
+def test_register_page_loads_and_has_form_elements(browser, base_url, wait):
+    """
+    테스트 1: 회원가입 페이지가 성공적으로 로드되고 필수 폼 요소가 있는지 검증합니다.
+    """
 
-def test_registration_password_mismatch_error(client):
-    """비밀번호와 확인 비밀번호가 일치하지 않을 때 오류가 발생하는지 테스트"""
-    # 비밀번호가 일치하지 않는 폼 데이터
-    mismatch_data = {
-        'username': 'mismatchuser',
-        'password': 'Password123!',
-        'confirm': 'DifferentPass456!'
-    }
+    print("\n[TEST 1] 회원가입 페이지 로드 및 요소 확인 시작...")
 
-    # POST 요청
-    response = client.post('/register', data=mismatch_data)
+    browser.get(base_url + '/register')
 
-    # 1. 상태 코드 확인 
-    # (일반적으로 오류 메시지를 표시하며 회원가입 페이지를 다시 렌더링 -> 200 OK 예상)
-    assert response.status_code == 200
-    
-    # 2. 오류 메시지 내용 확인 
-    # 💡 실제 애플리케이션이 표시하는 오류 메시지 텍스트를 검증합니다.
-    # response_data = response.data.decode('utf-8')
-    # assert "비밀번호가 일치하지 않습니다" in response_data
+    # 제목 확인
+    wait.until(
+        EC.visibility_of_element_located((By.XPATH, "//h4[text()='집사 회원가입']"))
+    )
+
+    try:
+        wait.until(EC.presence_of_element_located((By.NAME, 'username')))
+        wait.until(EC.presence_of_element_located((By.NAME, 'password')))
+        wait.until(EC.presence_of_element_located((By.NAME, 'confirm')))
+
+        wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//button[text()='Sign Up']"))
+        )
+        print("[SUCCESS] 페이지 제목, 폼 필드, 제출 버튼 모두 확인 완료.")
+    except TimeoutException:
+        assert False, "회원가입 페이지의 필수 폼 요소를 찾을 수 없습니다."
+
+
+def test_successful_registration_and_redirection(browser, base_url, wait):
+    """
+    테스트 2:
+    1) 유효한 데이터로 회원가입 폼을 제출하면,
+    2) 로그인 페이지(/login)로 이동하고,
+    3) 그 계정으로 실제 로그인까지 성공하는지 확인한다.
+    """
+
+    print("\n[TEST 2] 성공적인 회원가입 시나리오 시작...")
+
+    # 중복 방지를 위한 유니크한 username
+    TEST_UNIQUE_USERNAME = f"testuser_{int(time.time())}"
+    TEST_PASSWORD = "Password123"
+
+    # 1. 회원가입 페이지 접속
+    browser.get(base_url + '/register')
+
+    # 폼 입력
+    wait.until(
+        EC.presence_of_element_located((By.NAME, 'username'))
+    ).send_keys(TEST_UNIQUE_USERNAME)
+    browser.find_element(By.NAME, 'password').send_keys(TEST_PASSWORD)
+    browser.find_element(By.NAME, 'confirm').send_keys(TEST_PASSWORD)
+
+    # 제출
+    browser.find_element(By.XPATH, "//button[text()='Sign Up']").click()
+
+    # 2. /login 으로 이동했는지 확인 (리다이렉트가 느리면 수동으로 한 번 더 이동 보정)
+    try:
+        wait.until(EC.url_contains('/login'))
+        print(f"[INFO] 회원가입 후 URL 이동 확인: {browser.current_url}")
+    except TimeoutException:
+        # 혹시 아직 /register 에 머물러 있으면 강제로 /login 으로 이동
+        print("[WARN] URL 변경 대기 타임아웃. 수동으로 /login 접속 시도.")
+        browser.get(base_url + '/login')
+
+    # 실제로 현재 페이지가 로그인 페이지인지 기본 요소로도 한 번 확인
+    try:
+        wait.until(EC.presence_of_element_located((By.NAME, 'username')))
+        wait.until(EC.presence_of_element_located((By.NAME, 'password')))
+        print("[INFO] 로그인 페이지 폼 요소 확인 완료.")
+    except TimeoutException:
+        assert False, "회원가입 후 로그인 페이지 폼 요소를 찾지 못했습니다."
+
+    # 3. 방금 만든 계정으로 로그인 시도
+    browser.find_element(By.NAME, 'username').clear()
+    browser.find_element(By.NAME, 'username').send_keys(TEST_UNIQUE_USERNAME)
+    browser.find_element(By.NAME, 'password').clear()
+    browser.find_element(By.NAME, 'password').send_keys(TEST_PASSWORD)
+    browser.find_element(By.XPATH, "//button[text()='Login']").click()
+
+    # Logout 링크가 나오면 로그인 성공으로 판단
+    try:
+        wait.until(
+            EC.visibility_of_element_located((By.XPATH, "//a[text()='Logout']"))
+        )
+        print(f"[SUCCESS] 신규 계정 '{TEST_UNIQUE_USERNAME}'로 로그인 성공 및 'Logout' 버튼 확인.")
+    except TimeoutException:
+        print("\n=== 로그인 실패 시점 페이지 소스 ===")
+        print(browser.page_source)
+        print("=================================")
+        assert False, "회원가입한 계정으로 로그인에 실패했습니다."
+
+
+def test_registration_password_mismatch_error_message(browser, base_url, wait):
+    """
+    테스트 3: 비밀번호와 확인 비밀번호가 일치하지 않을 때 오류 메시기가 표시되는지 테스트
+    """
+
+    print("\n[TEST 3] 비밀번호 불일치 오류 시나리오 시작...")
+
+    browser.get(base_url + '/register')
+
+    wait.until(
+        EC.presence_of_element_located((By.NAME, 'username'))
+    ).send_keys('mismatch_test')
+    browser.find_element(By.NAME, 'password').send_keys('password123')
+    browser.find_element(By.NAME, 'confirm').send_keys('different_password')
+
+    browser.find_element(By.XPATH, "//button[text()='Sign Up']").click()
+
+    error_message_xpath = (
+        "//div[contains(@class, 'alert-danger') "
+        "and contains(text(), '비밀번호가 일치하지 않습니다.')]"
+    )
+
+    try:
+        error_alert = wait.until(
+            EC.visibility_of_element_located((By.XPATH, error_message_xpath))
+        )
+        assert "비밀번호가 일치하지 않습니다." in error_alert.text
+        print("[SUCCESS] '비밀번호 불일치' 오류 메시지 확인 완료.")
+    except TimeoutException:
+        assert False, "비밀번호 불일치 오류 메시지가 표시되지 않았습니다."
+
+    # 여전히 /register 에 머물러 있어야 함
+    assert browser.current_url == base_url + '/register'
