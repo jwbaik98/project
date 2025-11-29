@@ -1,4 +1,3 @@
-
 from flask import (
     Flask, render_template, request, redirect,
     url_for, session, flash
@@ -7,7 +6,10 @@ from flask import (
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
 
-USERS = {}
+# Selenium + pytest에서 공통으로 쓰는 기본 유저
+USERS = {
+    "testuser": {"password": "password123"},
+}
 
 PRODUCTS = [
     {
@@ -92,8 +94,36 @@ PRODUCTS = [
     },
 ]
 
+
 def get_product(pid):
-    return next((p for p in PRODUCTS if p["id"] == pid), None)
+    """주어진 ID로 상품 정보를 찾아 반환합니다."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+
+    for product in PRODUCTS:
+        if product["id"] == pid:
+            return product
+    return None
+
+
+def product_in_cart(pid, cart=None):
+    """
+    특정 상품 ID가 현재 장바구니에 포함되어 있는지 여부를 반환합니다.
+    - tests/test_index.py 에서 직접 import해서 사용
+    - 템플릿에서도 사용 (context_processor에서 넘겨줌)
+    """
+    if cart is None:
+        cart = session.get("cart", {})
+
+    try:
+        pid_str = str(int(pid))
+    except (TypeError, ValueError):
+        pid_str = str(pid)
+
+    return pid_str in cart
+
 
 @app.context_processor
 def inject_globals():
@@ -101,8 +131,10 @@ def inject_globals():
     return {
         "current_user": session.get("user_id"),
         "cart_count": len(cart),
-        "product_in_cart": lambda pid: str(pid) in cart,
+        # 템플릿에서는 현재 cart snapshot을 기준으로 검사하도록 래핑
+        "product_in_cart": lambda pid: product_in_cart(pid, cart),
     }
+
 
 def require_login():
     if not session.get("user_id"):
@@ -110,9 +142,11 @@ def require_login():
         return False
     return True
 
+
 @app.route("/")
 def index():
     return render_template("index.html", products=PRODUCTS)
+
 
 @app.route("/product/<int:pid>")
 def product_detail(pid):
@@ -122,104 +156,117 @@ def product_detail(pid):
         return redirect(url_for("index"))
     return render_template("product_detail.html", product=product)
 
+
 @app.route("/cart")
 def cart():
     cart = session.get("cart", {})
     items = []
     total = 0
     for pid_str in cart:
-        product = get_product(int(pid_str))
+        product = get_product(pid_str)
         if product:
             total += product["price"]
             items.append(product)
     return render_template("cart.html", items=items, total=total)
 
+
 @app.route("/cart/toggle/<int:pid>", methods=["POST"])
 def toggle_cart(pid):
     if not require_login():
         return redirect(url_for("login", next=request.referrer or url_for("index")))
+
     cart = session.get("cart", {})
     pid_str = str(pid)
+
     if pid_str in cart:
         cart.pop(pid_str)
         flash("장바구니에서 제거되었습니다.", "info")
     else:
         cart[pid_str] = 1
         flash("장바구니에 추가되었습니다.", "success")
+
     session["cart"] = cart
     return redirect(request.referrer or url_for("index"))
+
 
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
     if not require_login():
         return redirect(url_for("login", next=url_for("checkout")))
+
     if not session.get("cart"):
         flash("장바구니가 비어 있습니다.", "warning")
         return redirect(url_for("index"))
+
     if request.method == "POST":
         if "cancel" in request.form:
             flash("결제가 취소되었습니다.", "info")
             return redirect(url_for("cart"))
-        name = request.form.get("name","").strip()
-        phone = request.form.get("phone","").strip()
-        address = request.form.get("address","").strip()
+
+        name = request.form.get("name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        address = request.form.get("address", "").strip()
+
         if not (name and phone and address):
             flash("모든 필수 정보를 입력해주세요.", "danger")
         else:
             session["cart"] = {}
             flash("결제가 완료되었습니다! 주문이 접수되었습니다.", "success")
             return redirect(url_for("index"))
+
     return render_template("checkout.html")
 
-@app.route("/login", methods=["GET","POST"])
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method=="POST":
-        username=request.form["username"].strip()
-        password=request.form["password"].strip()
-        user=USERS.get(username)
-        if not user or user["password"]!=password:
-            flash("아이디 또는 비밀번호가 올바르지 않습니다.","danger")
+    if request.method == "POST":
+        username = request.form["username"].strip()
+        password = request.form["password"].strip()
+        user = USERS.get(username)
+
+        if not user or user["password"] != password:
+            flash("아이디 또는 비밀번호가 올바르지 않습니다.", "danger")
         else:
-            session["user_id"]=username
-            flash("로그인 성공!","success")
+            session["user_id"] = username
+            flash("로그인 성공!", "success")
             next_url = request.args.get("next")
             return redirect(next_url or url_for("index"))
+
     return render_template("login.html")
 
-@app.route("/register", methods=["GET","POST"])
+
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method=="POST":
-        username=request.form["username"].strip()
-        password=request.form["password"].strip()
-        confirm=request.form["confirm"].strip()
+    if request.method == "POST":
+        username = request.form["username"].strip()
+        password = request.form["password"].strip()
+        confirm = request.form["confirm"].strip()
+
+        # 이미 존재하는 사용자 처리
         if username in USERS:
-            flash("이미 존재하는 사용자입니다.","danger")
-        elif password!=confirm:
-            flash("비밀번호가 일치하지 않습니다.","danger")
-        else:
-            USERS[username]={"password":password}
-            flash("회원가입 성공! 이제 로그인해주세요.","success")
+            flash("이미 존재하는 사용자입니다. 로그인해주세요.", "info")
             return redirect(url_for("login"))
+
+        # 비밀번호 불일치
+        elif password != confirm:
+            flash("비밀번호가 일치하지 않습니다.", "danger")
+            return render_template("register.html")
+
+        # 정상 회원가입
+        else:
+            USERS[username] = {"password": password}
+            flash("회원가입 성공! 이제 로그인해주세요.", "success")
+            return redirect(url_for("login"))
+
     return render_template("register.html")
+
 
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("로그아웃되었습니다.","info")
+    flash("로그아웃되었습니다.", "info")
     return redirect(url_for("index"))
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     app.run(debug=True)
-
-def get_product(pid):
-    """주어진 ID로 상품 정보를 찾아 반환합니다."""
-    # pid가 문자열로 넘어올 수 있으므로 int로 변환 시도
-    try:
-        pid = int(pid)
-    except ValueError:
-        return None
-
-    for product in PRODUCTS:
-        if product['id'] == pid:
-            return product
-    return None
