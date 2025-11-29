@@ -1,11 +1,10 @@
 # test_login.py
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-\r\n
 import pytest
 from flask import session
 
-# 🌟 중요: 상대 경로(.)를 사용하여 app.py 모듈을 임포트합니다.
-from .app import app, USERS
-
+# 🌟 중요: app.py 모듈을 임포트합니다.
+from app import app, USERS
 
 # ----------------------------------------------------
 # 1. 필수 Fixture: client 정의 (두 파일에 모두 필요)
@@ -33,8 +32,8 @@ def client():
 @pytest.fixture
 def login_test_env(client):
     """로그인 테스트에 필요한 환경 및 데이터를 통합 제공합니다."""
-    test_username = "fixture_user_id"
-    test_password = "fixture_password_123"
+    test_username = "fixture_testuser"
+    test_password = "fixture_password123"
     USERS[test_username] = {"password": test_password}
     return client, test_username, test_password
 

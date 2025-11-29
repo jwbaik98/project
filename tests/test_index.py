@@ -4,7 +4,7 @@ import pytest
 # 💡 실제 Flask 애플리케이션 파일명에 맞게 'app'과 필요한 함수를 수정하세요.
 # 여기서는 앱 인스턴스가 'app.py'에 정의되어 있고,
 # 상품 목록을 가져오는 함수가 app.get_all_products라고 가정합니다.
-from app import app 
+from app import app
 
 
 # ----------------------------------------------------
@@ -13,27 +13,27 @@ from app import app
 
 DUMMY_PRODUCTS = [
     {
-        'id': 101,
-        'name': '고양이 장난감 A',
-        'brand': '캣토이즈',
-        'description': '집중력을 높여주는 깃털 장난감입니다.',
-        'price': 15000,
-        'image_url': '/static/img/toy_a.jpg'
+        "id": 1,
+        "name": "프리미엄 캣타워",
+        "price": 129000,
+        "brand": "Resona Cat",
+        "description": "3단 구조와 편안한 해먹이 포함된 프리미엄 캣타워.",
+        "image_url": "https://images.pexels.com/photos/1276553/pexels-photo-1276553.jpeg?auto=compress&cs=tinysrgb&w=600"
     },
     {
-        'id': 102,
-        'name': '럭셔리 캣타워 B',
-        'brand': '캣빌리지',
-        'description': '고급 소재로 제작된 튼튼한 캣타워입니다.',
-        'price': 120000,
-        'image_url': '/static/img/tower_b.jpg'
+        "id": 2,
+        "name": "터널 놀이 텐트",
+        "price": 39000,
+        "brand": "PlayLand",
+        "description": "숨었다 나왔다를 반복하며 스트레스를 해소할 수 있는 터널형 텐트.",
+        "image_url": "https://images.pexels.com/photos/1170986/pexels-photo-1170986.jpeg?auto=compress&cs=tinysrgb&w=600"
     }
 ]
 
-# 상품 ID 101만 장바구니에 있다고 가정하는 Mock 함수
-def mock_product_in_cart(product_id):
-    """테스트를 위해 ID 101인 상품만 True를 반환합니다."""
-    return product_id == 101
+# 상품 ID 1만 장바구니에 있다고 가정하는 Mock 함수
+def mock_product_in_cart():
+    """테스트를 위해 ID 1인 상품만 True를 반환합니다."""
+    return {1}
 
 # ----------------------------------------------------
 # 🛠️ Fixture: Flask 테스트 클라이언트 설정
@@ -84,28 +84,33 @@ def test_product_listing_and_cart_buttons(client, monkeypatch):
     # **애플리케이션 코드를 수정하거나** mock 함수를 사용해야 합니다.
     
     # 간단한 Mocking을 위해, 이 테스트는 response.data를 기반으로 템플릿의 최종 출력 결과를 검증합니다.
+from app import product_in_cart
+def mock_product_in_cart(pid):
+    return pid == 1
+
+    monkeypatch.setattr(mock_product_in_cart)
     response = client.get('/')
     response_data = response.data.decode('utf-8')
     
-    # 1. 상품 101 (고양이 장난감 A) 검증
-    assert "고양이 장난감 A" in response_data
-    assert "15,000원" in response_data
+    # 1. 상품 1 (고양이 장난감 A) 검증
+    assert "프리미엄 캣타워" in response_data
+    assert "129,000원" in response_data
     
-    # 템플릿 로직 검증: ID 101은 장바구니에 있으므로 '카트에서 제거' 버튼이 보여야 합니다.
-    assert f'<form action="{app.url_for("toggle_cart", pid=101)}" method="post"' in response_data
-    # 💡 URL이 실제로 /cart/toggle/101로 렌더링되는지 확인 (url_for('toggle_cart', pid=product.id) 검증)
+    # 템플릿 로직 검증: ID 1은 장바구니에 있으므로 '카트에서 제거' 버튼이 보여야 합니다.
+    assert f'<form action="{app.url_for("toggle_cart", pid=1)}" method="post"' in response_data
+    # 💡 URL이 실제로 /cart/toggle/1로 렌더링되는지 확인 (url_for('toggle_cart', pid=product.id) 검증)
     assert '카트에서 제거</button>' in response_data
-    assert '카트에 담기</button>' not in response_data # 동시에 나타나면 안 됨 (ID 101 기준)
+    assert '카트에 담기</button>' not in response_data # 동시에 나타나면 안 됨 (ID 1 기준)
     
-    # 2. 상품 102 (럭셔리 캣타워 B) 검증
-    assert "럭셔리 캣타워 B" in response_data
-    assert "120,000원" in response_data
+    # 2. 상품 2 (터널 놀이 텐트) 검증
+    assert "터널 놀이 텐트" in response_data
+    assert "39,000원" in response_data
     
-    # 템플릿 로직 검증: ID 102는 장바구니에 없으므로 '카트에 담기' 버튼이 보여야 합니다.
-    assert f'<form action="{app.url_for("toggle_cart", pid=102)}" method="post"' in response_data
+    # 템플릿 로직 검증: ID 2는 장바구니에 없으므로 '카트에 담기' 버튼이 보여야 합니다.
+    assert f'<form action="{app.url_for("toggle_cart", pid=2)}" method="post"' in response_data
     assert '카트에 담기</button>' in response_data
-    assert '카트에서 제거</button>' not in response_data # 동시에 나타나면 안 됨 (ID 102 기준)
+    assert '카트에서 제거</button>' not in response_data # 동시에 나타나면 안 됨 (ID 2 기준)
     
     # 3. 상세보기 링크 검증
-    assert f'<a href="{app.url_for("product_detail", pid=101)}" class="btn' in response_data
-    assert f'<a href="{app.url_for("product_detail", pid=102)}" class="btn' in response_data
+    assert f'<a href="{app.url_for("product_detail", pid=1)}" class="btn' in response_data
+    assert f'<a href="{app.url_for("product_detail", pid=2)}" class="btn' in response_data

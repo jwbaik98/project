@@ -1,10 +1,12 @@
-# test_product.py
-# -*- coding: utf-8 -*-
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+from app import app, USERS, get_product
+import time
 import pytest
-from flask import session
 
 # 🌟 중요: 상대 경로(.)를 사용하여 app.py 모듈을 임포트합니다. get_product 함수를 포함합니다.
-from .app import app, USERS, get_product
 
 
 # ----------------------------------------------------
@@ -31,8 +33,8 @@ def client():
 @pytest.fixture
 def login_test_env(client):
     """로그인 테스트에 필요한 환경 및 데이터를 통합 제공합니다."""
-    test_username = "fixture_user_id"
-    test_password = "fixture_password_123"
+    test_username = "fixture_testuser"
+    test_password = "fixture_password123"
     USERS[test_username] = {"password": test_password}
     return client, test_username, test_password
 
